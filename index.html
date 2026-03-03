@@ -313,7 +313,7 @@
         <div class="merr" id="regErr" style="color:var(--accent-live); display:none;">Enter name and email</div>
         <button class="mbtn c" id="subBtn" onclick="doRegister()">Join Free</button>
       </div>
-      <button class="mbtn g" onclick="closeM('subModal')">Close</button>
+      <button class="mbtn g" onclick="closeM('subModal')">Cancel</button>
     </div>
   </div>
 
@@ -358,7 +358,7 @@
 
   <script src="https://www.youtube.com/iframe_api"></script>
   <script>
-    // ==================== OFFLINE SINGLE‑USER VERSION WITH FIXES ====================
+    // ==================== OFFLINE SINGLE‑USER VERSION WITH ALL FIXES ====================
     const ADMIN_CODE = 'PNR-OWNER';
     const SLOT_FREE = 30 * 60;
     const SLOT_SUB = 60 * 60;
@@ -462,7 +462,7 @@
       checkSlot();
     }
 
-    // Admin functions (unchanged, but no socket)
+    // Admin functions (unchanged)
     function doAdminLogin() {
       const code = document.getElementById('adminCode').value.trim();
       if (code !== ADMIN_CODE) {
@@ -612,14 +612,12 @@
       } catch(e) {}
     }
 
-    // Songs handling – FIXED VERSION with error handling
+    // ========== FIXED SONGS HANDLING ==========
     function addFiles(files) {
-      // Limit number of files to prevent overload
       const MAX_FILES = 50;
       const fileArray = Array.from(files).slice(0, MAX_FILES);
       
       fileArray.forEach(f => {
-        // Only accept audio files
         if (!f.type.startsWith('audio/')) {
           chat('PNR', `⚠ Skipped ${f.name} (not audio)`, 'bot');
           return;
@@ -634,7 +632,6 @@
       
       renderSongs();
       
-      // Only auto-load if no track is currently loaded
       if (curIdx === -1 && songs.length) {
         curIdx = 0;
         loadTrack(0).catch(e => {
@@ -650,7 +647,6 @@
     async function loadTrack(i) {
       if (i < 0 || i >= songs.length) return;
       
-      // Clean up previous audio
       if (audioEl) {
         audioEl.pause();
         audioEl.src = '';
@@ -664,7 +660,6 @@
         audioEl = new Audio(song.url);
         audioEl.volume = musicVol;
         
-        // Wait for metadata with timeout
         await new Promise((resolve, reject) => {
           const timeout = setTimeout(() => reject(new Error('Metadata load timeout')), 10000);
           audioEl.onloadedmetadata = () => {
@@ -706,16 +701,13 @@
       } catch (e) {
         console.error('loadTrack error:', e);
         chat('PNR', `⚠ Failed to load "${song.name}". File may be unsupported.`, 'bot');
-        // Remove the problematic track
         URL.revokeObjectURL(song.url);
         songs.splice(i, 1);
         if (songs.length === 0) {
           curIdx = -1;
           audioEl = null;
         } else {
-          // Adjust curIdx if needed
           if (i <= curIdx) curIdx = Math.max(0, curIdx - 1);
-          // Try to load the next track
           loadTrack(curIdx).catch(e => {});
         }
         renderSongs();
@@ -868,24 +860,19 @@
     function hideVid() { document.getElementById('liveVid').srcObject = null; document.getElementById('stageIdle').style.display = 'flex'; document.getElementById('stageVid').classList.remove('on'); document.getElementById('premOv').classList.remove('on'); document.getElementById('infoBar').classList.remove('on'); }
     function goFS() { const e = document.getElementById('stageVid'); (e.requestFullscreen || e.webkitRequestFullscreen || function(){}).call(e); }
 
-    // Live toggle – FIXED: resume audio context
+    // ========== FIXED LIVE TOGGLE ==========
     async function togLive() {
       const i = djQueue.findIndex(d => d.code === logCode);
       if (i !== activeSlot && !isLive) { chat('PNR', '⚠ Not your slot yet!', 'bot'); return; }
       
-      // Resume audio context if needed (important for mobile)
       if (audioCtx && audioCtx.state === 'suspended') {
-        try {
-          await audioCtx.resume();
-        } catch (e) {
-          console.warn('Could not resume audio context', e);
-        }
+        try { await audioCtx.resume(); } catch (e) { console.warn('Could not resume audio context', e); }
       }
       
       isLive = !isLive;
       const btn = document.getElementById('liveBtn');
       if (isLive) {
-        stopYT();
+        stopYT(); // ensure YouTube stops
         if (isPrem && camStream) showVid(camStream);
         const mode = isPrem ? 'prem' : 'dj';
         const track = songs[curIdx]?.name || 'Live Set';
@@ -900,6 +887,7 @@
             document.getElementById('npVinyl').classList.add('go');
           } catch (e) {
             console.warn('Play failed', e);
+            chat('PNR', '⚠ Playback failed – tap screen first', 'bot');
           }
         }
         if (!isPlaying) { isPlaying = true; updPlay(); startWF(); vinylGo(true); }
@@ -909,20 +897,15 @@
       }
     }
 
-    // FIXED: DJ Play with audio context resume
+    // ========== FIXED DJ PLAY ==========
     async function togDJPlay() {
       if (!audioEl || !songs.length) { 
         document.getElementById('fileInput').click(); 
         return; 
       }
       
-      // Resume audio context if suspended (required on mobile)
       if (audioCtx && audioCtx.state === 'suspended') {
-        try {
-          await audioCtx.resume();
-        } catch (e) {
-          console.warn('Could not resume audio context', e);
-        }
+        try { await audioCtx.resume(); } catch (e) { console.warn('Could not resume audio context', e); }
       }
       
       djPlaying = !djPlaying;
@@ -940,6 +923,18 @@
         audioEl.pause(); 
         document.getElementById('djPlayBtn').textContent = '▶'; 
         document.getElementById('npVinyl').classList.remove('go');
+      }
+    }
+
+    // ========== FIXED STOP YOUTUBE ==========
+    function stopYT() {
+      if (ytReady && ytPlayer) {
+        ytPlayer.pauseVideo();
+        ytPlayer.mute();
+        ytPlayer.stopVideo(); // extra force
+        // Also try to clear the video source
+        const iframe = document.querySelector('#ytPlayer iframe');
+        if (iframe) iframe.src = '';
       }
     }
 
@@ -972,7 +967,6 @@
       });
     }
     function startYT() { if (!ytReady || !ytPlayer) return; ytPlayer.loadPlaylist({ list: playlists[activePl].id, listType: 'playlist', index: 0 }); ytPlayer.setLoop(true); ytPlayer.setVolume(ytVol); setMode('yt'); chat('PNR', '📺 Auto-DJ running.', 'bot'); }
-    function stopYT() { ytReady && ytPlayer && (ytPlayer.pauseVideo(), ytPlayer.mute()); }
     function resumeYT() { ytReady && ytPlayer && stMode === 'yt' && (ytPlayer.unMute(), ytPlayer.setVolume(ytVol), ytPlayer.playVideo()); }
     function setVol(v) { ytVol = parseInt(v); ytReady && ytPlayer && ytPlayer.setVolume(ytVol); }
 
