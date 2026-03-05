@@ -145,16 +145,9 @@ function playPause() {
   }
 }
     }
-
-    isLive = !isLive;
-    const btn = document.getElementById('liveBtn');
-
-    if (isLive) {
-      try {
-        // Unlock audio (mobile)
-        if (!window.audioCtx) {
-          window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-          await window.audioCtx.resume();
+const tokenRes = await fetch(`http://159.223.192.8:3001/token?room=${roomName}&identity=${encodeURIComponent(identity)}`);
+if (!tokenRes.ok) throw new Error('Token server error');
+const { token } = await tokenRes.json();
         }
 
         // Get mic
