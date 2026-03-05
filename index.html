@@ -41,10 +41,24 @@
   <div class="stage-vid" id="stageVid"><video id="liveVid" autoplay playsinline muted></video></div>
 </div>
 
-<div class="lplayer">
-  <button class="pb" onclick="togglePlay()">▶</button>
-  <input type="range" min="0" max="100" value="75">
-</div>
+<button class="pb" onclick="playPause()">▶</button>
+
+<script>
+function playPause() {
+  if (!audioEl) {
+    alert('No track loaded - add one in Booth');
+    return;
+  }
+
+  if (audioEl.paused) {
+    audioEl.play().catch(e => {
+      alert('Playback blocked: ' + e.message + '\nTap anywhere on screen first');
+    });
+  } else {
+    audioEl.pause();
+  }
+}
+</script>
 
 <div class="tabs">
   <div class="tab on" onclick="goTab('listen')">Listen</div>
