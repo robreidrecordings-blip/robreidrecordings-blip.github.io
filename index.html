@@ -55,6 +55,14 @@ function playPause() {
     alert('No track loaded - add one in Booth');
     return;
   }
+<button class="pb" onclick="playPause()">▶</button>
+
+<script>
+function playPause() {
+  if (!audioEl) {
+    alert('No track loaded - add one in Booth');
+    return;
+  }
 
   if (audioEl.paused) {
     audioEl.play().catch(e => {
@@ -63,6 +71,8 @@ function playPause() {
   } else {
     audioEl.pause();
   }
+}
+</script>
 }
 </script>
 
