@@ -1,65 +1,515 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>LiveKit Test</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <title>PINS & NEEDLES · RADIO</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <!-- LiveKit client with fallback -->
   <script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js"></script>
+  <script>
+    // Fallback if first CDN fails
+    window.addEventListener('load', function() {
+      if (typeof Livekit === 'undefined') {
+        var script = document.createElement('script');
+        script.src = 'https://unpkg.com/livekit-client@2/dist/livekit-client.umd.js';
+        document.head.appendChild(script);
+      }
+    });
+  </script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    :root {
+      --bg: #0b0c0f;
+      --surface: #13151c;
+      --surface-light: #1e212a;
+      --accent: #ff4d6d;
+      --accent-live: #ff3b5c;
+      --text: #f0f2f5;
+      --text-muted: #8a91a5;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      line-height: 1.5;
+      overflow-x: hidden;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem;
+      background: rgba(0,0,0,0.9);
+      backdrop-filter: blur(8px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo {
+      font-weight: 700;
+      font-size: 1.2rem;
+    }
+    .logo em {
+      color: var(--accent);
+      font-style: normal;
+      font-size: 1.8rem;
+      font-weight: 800;
+    }
+    .stage {
+      background: #000;
+      height: 35vh;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .stage-idle {
+      text-align: center;
+      color: var(--text-muted);
+    }
+    .stage-vid {
+      display: none;
+      width: 100%;
+      height: 100%;
+    }
+    .stage-vid.on {
+      display: block;
+    }
+    .stage-vid video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .controls {
+      padding: 1rem;
+      background: var(--surface);
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 999px;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--surface-light);
+      color: var(--text);
+      transition: 0.2s;
+    }
+    .btn.accent {
+      background: var(--accent);
+      color: #000;
+    }
+    .btn.live {
+      background: var(--accent-live);
+      color: white;
+    }
+    .btn.small {
+      padding: 0.5rem 1rem;
+      font-size: 0.8rem;
+    }
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      padding: 1rem;
+      background: var(--surface-light);
+      overflow-x: auto;
+    }
+    .tab {
+      padding: 0.5rem 1.2rem;
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--text-muted);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .tab.on {
+      background: var(--accent);
+      color: white;
+    }
+    .panel {
+      display: none;
+      padding: 1rem;
+    }
+    .panel.on {
+      display: block;
+    }
+    #rqList {
+      background: var(--surface);
+      padding: 1rem;
+      border-radius: 12px;
+      margin-top: 1rem;
+    }
+    .mic-visualizer {
+      display: flex;
+      gap: 2px;
+      height: 30px;
+      margin: 1rem 0;
+    }
+    .mic-visualizer div {
+      flex: 1;
+      background: var(--surface-light);
+      height: 100%;
+      border-radius: 2px;
+      transition: 0.1s;
+    }
+    .overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: 0.2s;
+    }
+    .overlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .modal {
+      background: var(--surface);
+      padding: 2rem;
+      border-radius: 24px;
+      width: 90%;
+      max-width: 400px;
+    }
+    .modal input {
+      width: 100%;
+      padding: 1rem;
+      margin: 1rem 0;
+      background: var(--surface-light);
+      border: 1px solid #2f3545;
+      border-radius: 40px;
+      color: white;
+    }
+    .modal button {
+      width: 100%;
+      padding: 1rem;
+      margin-bottom: 0.5rem;
+      border: none;
+      border-radius: 40px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
 </head>
 <body>
-  <h1>LiveKit Broadcast Test</h1>
-  <button id="startBtn">Start Broadcast</button>
-  <div id="status"></div>
-  <div id="error" style="color:red"></div>
 
-  <script>
-    // Wait for library to load
-    function waitForLib() {
-      return new Promise((resolve) => {
-        if (typeof Livekit !== 'undefined') return resolve();
-        const check = setInterval(() => {
-          if (typeof Livekit !== 'undefined') {
-            clearInterval(check);
-            resolve();
-          }
-        }, 100);
+<header>
+  <div class="logo"><em>PINS & NEEDLES</em>RADIO</div>
+  <button class="btn small" onclick="openM('djModal')">DJ Login</button>
+</header>
+
+<!-- Stage Area -->
+<div class="stage">
+  <div class="stage-idle" id="stageIdle">🔴 Idle – Go Live to broadcast</div>
+  <div class="stage-vid" id="stageVid">
+    <video id="liveVid" autoplay playsinline muted></video>
+  </div>
+</div>
+
+<!-- Playback Controls -->
+<div class="controls">
+  <button class="btn accent" onclick="playPause()" id="playPauseBtn">▶ Play</button>
+  <span id="nowPlaying">No track loaded</span>
+  <input type="range" min="0" max="100" value="75" oninput="setVolume(this.value/100)" style="flex:1;">
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <div class="tab on" onclick="goTab('listen')">📻 Listen</div>
+  <div class="tab" onclick="goTab('booth')">🎛 Booth</div>
+</div>
+
+<!-- Listen Panel -->
+<div id="listen" class="panel on">
+  <div id="rqList">No DJs yet – be the first to join!</div>
+</div>
+
+<!-- Booth Panel -->
+<div id="booth" class="panel">
+  <button class="btn" onclick="document.getElementById('fileInput').click()" style="width:100%; margin-bottom:1rem;">+ Add Music</button>
+  <input type="file" id="fileInput" accept="audio/*" multiple hidden onchange="addFiles(this.files)">
+
+  <button class="btn" onclick="togMic()" id="micBtn" style="width:100%; margin-bottom:0.5rem;">🎙 Enable Mic</button>
+  <div class="mic-visualizer" id="micVisualizer"></div>
+
+  <button class="btn" onclick="togCam()" id="camBtn" style="width:100%; margin-bottom:1rem;">📷 Enable Camera</button>
+
+  <button id="liveBtn" class="btn accent" onclick="togLive()" style="width:100%; padding:1.5rem; font-size:1.2rem;">🔴 GO LIVE</button>
+</div>
+
+<!-- DJ Login Modal -->
+<div class="overlay" id="djModal">
+  <div class="modal">
+    <h2>DJ Login</h2>
+    <p>Enter your code (e.g., PNR-ABCD)</p>
+    <input type="text" id="djCodeIn" placeholder="PNR-XXXX">
+    <button onclick="doLogin()">Enter Booth</button>
+    <button onclick="closeM('djModal')">Cancel</button>
+  </div>
+</div>
+
+<script>
+  // ==================== CONFIGURATION ====================
+  const WS_URL = 'wss://pindigtal-w87ngpeu.livekit.cloud';
+  const API_KEY = 'APIwZMah6JcmKro';
+  const API_SECRET = '7CSnGzXUGa4eYJUhNFr4J8w5HjvtVOjIhnyxnBbFKDd';
+
+  // ==================== GLOBAL STATE ====================
+  let room = null;
+  let isLive = false;
+  let logName = null;
+  let audioEl = null;
+  let micStream = null;
+  let camStream = null;
+  let audioCtx = null;
+  let micAnalyser = null;
+  let micVisualizerInterval = null;
+
+  // ==================== TOKEN GENERATOR ====================
+  async function getToken(identity) {
+    const at = new Livekit.AccessToken(API_KEY, API_SECRET, { identity, ttl: '1h' });
+    at.addGrant({ roomJoin: true, room: 'pinsradio', canPublish: true, canSubscribe: true });
+    return at.toJwt();
+  }
+
+  // ==================== MOBILE AUDIO UNLOCK ====================
+  document.addEventListener('touchstart', async () => {
+    if (audioCtx && audioCtx.state === 'suspended') {
+      await audioCtx.resume();
+    }
+  }, { once: false });
+
+  // ==================== PLAY/PAUSE LOCAL AUDIO ====================
+  function playPause() {
+    if (!audioEl) {
+      alert('No track loaded – add one in Booth');
+      return;
+    }
+    if (audioEl.paused) {
+      audioEl.play().catch(e => {
+        alert('Playback blocked: tap screen first');
       });
+      document.getElementById('playPauseBtn').textContent = '⏸ Pause';
+    } else {
+      audioEl.pause();
+      document.getElementById('playPauseBtn').textContent = '▶ Play';
+    }
+  }
+
+  function setVolume(val) {
+    if (audioEl) audioEl.volume = val;
+  }
+
+  // ==================== FILE HANDLING ====================
+  function addFiles(files) {
+    if (files.length === 0) return;
+    const file = files[0];
+    if (!file.type.startsWith('audio/')) {
+      alert('Please select an audio file');
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    if (audioEl) {
+      audioEl.pause();
+      URL.revokeObjectURL(audioEl.src);
+    }
+    audioEl = new Audio(url);
+    audioEl.volume = 0.75;
+    audioEl.onended = () => {
+      document.getElementById('playPauseBtn').textContent = '▶ Play';
+    };
+    document.getElementById('nowPlaying').textContent = `🎵 ${file.name}`;
+    document.getElementById('playPauseBtn').textContent = '▶ Play';
+    alert('Music loaded. Enable mic and GO LIVE to broadcast.');
+  }
+
+  // ==================== MICROPHONE ====================
+  async function togMic() {
+    if (micStream) {
+      micStream.getTracks().forEach(t => t.stop());
+      micStream = null;
+      document.getElementById('micBtn').textContent = '🎙 Enable Mic';
+      if (micVisualizerInterval) {
+        clearInterval(micVisualizerInterval);
+        micVisualizerInterval = null;
+      }
+      return;
     }
 
-    document.getElementById('startBtn').onclick = async () => {
-      const status = document.getElementById('status');
-      const errorDiv = document.getElementById('error');
-      errorDiv.textContent = '';
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      document.getElementById('micBtn').textContent = '🎙 Mic ON (click to disable)';
 
-      // Check library
-      await waitForLib();
-      if (typeof Livekit === 'undefined') {
-        errorDiv.textContent = 'LiveKit library not loaded. Check network.';
-        return;
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+      const source = audioCtx.createMediaStreamSource(micStream);
+      micAnalyser = audioCtx.createAnalyser();
+      micAnalyser.fftSize = 256;
+      source.connect(micAnalyser);
+
+      const bufferLength = micAnalyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+      const visualizer = document.getElementById('micVisualizer');
+      visualizer.innerHTML = '';
+      for (let i = 0; i < 20; i++) {
+        visualizer.appendChild(document.createElement('div'));
       }
+      const bars = visualizer.children;
 
-      const WS_URL = 'wss://pindigtal-w87ngpeu.livekit.cloud';
-      // PASTE YOUR TOKEN HERE (from LiveKit dashboard)
-      const TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzI3Mjk4MTEsImlkZW50aXR5IjoicGluc3JhZGlvIiwiaXNzIjoiQVBJd1pNYWg2SmNtS3JvIiwibmJmIjoxNzcyNzI4OTExLCJzdWIiOiJwaW5zcmFkaW8iLCJ2aWRlbyI6eyJjYW5QdWJsaXNoIjp0cnVlLCJjYW5QdWJsaXNoRGF0YSI6dHJ1ZSwiY2FuU3Vic2NyaWJlIjp0cnVlLCJyb29tIjoidGVzdGRqIiwicm9vbUpvaW4iOnRydWV9fQ.FEK4bs128cDvbK-Kyd97UWZe6cDvtCyG6QMKbNjGs2Q'; // replace with your actual token
+      micVisualizerInterval = setInterval(() => {
+        if (!micAnalyser) return;
+        micAnalyser.getByteFrequencyData(dataArray);
+        for (let i = 0; i < bars.length; i++) {
+          const value = dataArray[i * 2] || 0;
+          const height = (value / 255) * 100;
+          bars[i].style.height = height + '%';
+          bars[i].style.background = value > 150 ? 'var(--accent-live)' : 'var(--accent)';
+        }
+      }, 50);
 
-      status.textContent = 'Requesting mic...';
+    } catch (e) {
+      alert('Mic access denied or not available');
+      console.error(e);
+    }
+  }
+
+  // ==================== CAMERA ====================
+  async function togCam() {
+    if (camStream) {
+      camStream.getTracks().forEach(t => t.stop());
+      camStream = null;
+      document.getElementById('camBtn').textContent = '📷 Enable Camera';
+      document.getElementById('liveVid').srcObject = null;
+      document.getElementById('stageVid').classList.remove('on');
+      document.getElementById('stageIdle').style.display = 'flex';
+      return;
+    }
+
+    try {
+      camStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      document.getElementById('camBtn').textContent = '📷 Camera ON (click to disable)';
+      if (isLive) {
+        document.getElementById('liveVid').srcObject = camStream;
+        document.getElementById('stageVid').classList.add('on');
+        document.getElementById('stageIdle').style.display = 'none';
+      }
+    } catch (e) {
+      alert('Camera access denied');
+      console.error(e);
+    }
+  }
+
+  // ==================== LIVE BROADCAST ====================
+  async function togLive() {
+    if (!logName) {
+      alert('Please log in as DJ first');
+      return;
+    }
+
+    if (!isLive) {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        status.textContent = 'Mic obtained. Connecting...';
+        if (audioCtx && audioCtx.state === 'suspended') await audioCtx.resume();
 
-        const room = new Livekit.Room();
-        room.on('connected', () => status.textContent = 'Connected! Publishing...');
-        room.on('disconnected', () => status.textContent = 'Disconnected');
-        room.on('connectionStateChanged', (state) => console.log('State:', state));
+        if (!micStream) {
+          await togMic();
+          if (!micStream) throw new Error('Microphone is required to broadcast');
+        }
 
-        await room.connect(WS_URL, TOKEN);
-        const track = stream.getAudioTracks()[0];
-        await room.localParticipant.publishTrack(track);
-        status.textContent = 'LIVE! Mic is broadcasting.';
+        const token = await getToken(logName);
+        room = new Livekit.Room();
+        room.on('connected', () => console.log('LiveKit connected'));
+        room.on('disconnected', () => console.log('LiveKit disconnected'));
+        await room.connect(WS_URL, token);
+
+        const micTrack = micStream.getAudioTracks()[0];
+        await room.localParticipant.publishTrack(micTrack);
+        console.log('Mic track published');
+
+        if (camStream) {
+          const camTrack = camStream.getVideoTracks()[0];
+          await room.localParticipant.publishTrack(camTrack);
+          document.getElementById('liveVid').srcObject = camStream;
+          document.getElementById('stageVid').classList.add('on');
+          document.getElementById('stageIdle').style.display = 'none';
+        } else {
+          document.getElementById('stageIdle').innerHTML = '🔴 LIVE (audio only)';
+        }
+
+        isLive = true;
+        document.getElementById('liveBtn').textContent = '■ END LIVE';
+        document.getElementById('liveBtn').classList.add('live');
+        alert('You are now LIVE on Pins & Needles Radio!');
+
       } catch (e) {
-        status.textContent = 'Error: ' + e.message;
-        errorDiv.textContent = e.message;
+        alert('Failed to go live: ' + e.message);
         console.error(e);
       }
-    };
-  </script>
+    } else {
+      if (room) {
+        room.disconnect();
+        room = null;
+      }
+      isLive = false;
+      document.getElementById('liveBtn').textContent = '🔴 GO LIVE';
+      document.getElementById('liveBtn').classList.remove('live');
+      document.getElementById('stageVid').classList.remove('on');
+      document.getElementById('stageIdle').style.display = 'flex';
+      document.getElementById('stageIdle').innerHTML = '🔴 Idle – Go Live to broadcast';
+    }
+  }
+
+  // ==================== DJ LOGIN ====================
+  function doLogin() {
+    const code = document.getElementById('djCodeIn').value.trim();
+    if (!code) {
+      alert('Enter a code');
+      return;
+    }
+    logName = 'DJ_' + code.slice(-4);
+    closeM('djModal');
+    document.getElementById('rqList').innerHTML = `✅ ${logName} is in the queue. Go to Booth and GO LIVE when ready.`;
+  }
+
+  function openM(id) {
+    document.getElementById(id).classList.add('open');
+  }
+  function closeM(id) {
+    document.getElementById(id).classList.remove('open');
+  }
+
+  // ==================== TABS ====================
+  function goTab(tabName) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('on'));
+    document.getElementById(tabName).classList.add('on');
+    document.querySelectorAll('.tab').forEach(t => {
+      if (t.textContent.includes(tabName === 'listen' ? 'Listen' : 'Booth')) {
+        t.classList.add('on');
+      }
+    });
+  }
+
+  // ==================== LIVEEKIT READY CHECK ====================
+  (function checkLib() {
+    if (typeof Livekit !== 'undefined') {
+      console.log('LiveKit loaded');
+    } else {
+      setTimeout(checkLib, 500);
+    }
+  })();
+</script>
 </body>
 </html>
