@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
   <title>PINS & NEEDLES · RADIO</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300..700&family=Space+Mono&family=Audiowide&display=swap" rel="stylesheet">
+  <!-- LiveKit client with fallback -->
   <script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js"></script>
   <script>
     window.addEventListener('load', function() {
@@ -16,7 +17,7 @@
     });
   </script>
   <style>
-    /* ========== COMPLETE STYLES (your original UI) ========== */
+    /* ========== YOUR FULL CSS (keep exactly as before) ========== */
     * { margin:0; padding:0; box-sizing:border-box; }
     :root {
       --bg: #0b0c0f; --surface0: #13151c; --surface1: #1e212a; --surface2: #2a2e3a;
@@ -308,9 +309,8 @@
     const ADMIN_CODE = 'PNR-OWNER';
     const SLOT_FREE = 30 * 60;
     const SLOT_SUB = 60 * 60;
-    const WS_URL = 'wss://pindigtal-w87ngpeu.livekit.cloud';
-    const API_KEY = 'APIwZMah6JcmKro';
-    const API_SECRET = '7CSnGzXUGa4eYJUhNFr4J8w5HjvtVOjIhnyxnBbFKDd';
+    const SANDBOX_URL = 'https://cloud-api.livekit.io/api/sandbox/connection-details';
+    const SANDBOX_ID = 'pindigtal-2454k0';
 
     // ==================== GLOBAL STATE ====================
     let djQueue = [], activeSlot = 0, slotLeft = SLOT_FREE, slotTmr = null;
@@ -326,7 +326,7 @@
     let playlists = [{name:"PINS&NEEDLES",id:"PL37s8KbwrYd8g6mMZs5WJB2UnTREmqj-M"}];
     let activePl = 0;
     let isAdmin = false;
-    let liveKitRoom = null; // LiveKit room instance
+    let liveKitRoom = null;
 
     // Helper functions
     function ts(s) { return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; }
@@ -419,7 +419,7 @@
       checkSlot();
     }
 
-    // Admin functions (abridged – you can add full admin logic later)
+    // Admin functions (unchanged)
     function doAdminLogin() {
       const code = document.getElementById('adminCode').value.trim();
       if (code !== ADMIN_CODE) {
@@ -701,11 +701,32 @@
     function setMusicVol(v) { musicVol = v/100; if (audioEl && !isDucked) audioEl.volume = musicVol; if (musicGain && !isDucked) musicGain.gain.value = musicVol; document.getElementById('mVolVal').textContent = v+'%'; }
     function setMicVol(v) { micVol = v/100; if (micGain) micGain.gain.value = micVol; document.getElementById('vVolVal').textContent = v+'%'; }
 
-    // ========== LIVEKIT TOKEN ==========
-    async function getLiveKitToken(identity) {
-      const at = new Livekit.AccessToken(API_KEY, API_SECRET, { identity, ttl: '1h' });
-      at.addGrant({ roomJoin: true, room: 'pinsradio', canPublish: true, canSubscribe: true });
-      return at.toJwt();
+    // ========== LIVEKIT SANDBOX TOKEN ==========
+    async function getSandboxToken(participantName, roomName = 'pinsradio') {
+      const response = await fetch(SANDBOX_URL, {
+        method: 'POST',
+        headers: {
+          'X-Sandbox-ID': SANDBOX_ID,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          room_name: roomName,
+          participant_name: participantName
+        })
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Token server error: ${response.status} ${errorText}`);
+      }
+      
+      const data = await response.json();
+      return {
+        token: data.participantToken,
+        url: data.serverUrl,
+        room: data.roomName,
+        identity: data.participantName
+      };
     }
 
     // ========== MICROPHONE ==========
@@ -830,7 +851,7 @@
       }
     }
 
-    // ========== LIVE TOGGLE (LIVEKIT) ==========
+    // ========== LIVE TOGGLE (LIVEKIT SANDBOX) ==========
     async function togLive() {
       const i = djQueue.findIndex(d => d.code === logCode);
       if (i !== activeSlot && !isLive) { 
@@ -853,14 +874,14 @@
             if (!micOn) throw new Error('Microphone is required to broadcast');
           }
           
-          // Get token (client-side)
-          const token = await getLiveKitToken(logName);
+          // Get token from sandbox
+          const { token, url } = await getSandboxToken(logName);
           
           // Connect to LiveKit
           const room = new Livekit.Room();
           room.on('connected', () => console.log('LiveKit connected'));
           room.on('disconnected', () => console.log('LiveKit disconnected'));
-          await room.connect(WS_URL, token);
+          await room.connect(url, token);
           
           // Publish microphone track
           const micTrack = micStream.getAudioTracks()[0];
