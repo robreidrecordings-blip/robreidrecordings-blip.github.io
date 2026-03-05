@@ -4,223 +4,514 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
   <title>PINS & NEEDLES · RADIO</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300..700&family=Space+Mono&family=Audiowide&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <!-- LiveKit client -->
   <script src="https://unpkg.com/livekit-client@2/dist/livekit-client.umd.js"></script>
   <style>
-    /* Your original CSS – paste full here if needed */
+    * { margin:0; padding:0; box-sizing:border-box; }
     :root {
-      --bg: #0b0c0f; --accent-primary: #ff4d6d; --accent-live: #ff3b5c; --premium: #c28aff;
+      --bg: #0b0c0f;
+      --surface: #13151c;
+      --surface-light: #1e212a;
+      --accent: #ff4d6d;
+      --accent-live: #ff3b5c;
+      --text: #f0f2f5;
+      --text-muted: #8a91a5;
     }
-    body { background: var(--bg); color: #f0f2f5; font-family: 'Inter', sans-serif; margin: 0; overflow-x: hidden; }
-    header { background: rgba(0,0,0,0.9); backdrop-filter: blur(8px); position: sticky; top: 0; z-index: 100; padding: 1rem; display: flex; justify-content: space-between; align-items: center; }
-    .logo em { color: var(--accent-primary); font-style: normal; font-weight: 800; }
-    .stage { background: #000; height: 40vh; position: relative; }
-    .stage-vid video { width: 100%; height: 100%; object-fit: cover; display: none; }
-    .stage-vid.on video { display: block; }
-    .lplayer { padding: 1rem; background: #13151c; display: flex; gap: 1rem; align-items: center; }
-    .pb { width: 50px; height: 50px; border-radius: 50%; background: var(--accent-primary); border: none; font-size: 1.5rem; color: black; cursor: pointer; }
-    .tabs { padding: 1rem; background: #1e212a; display: flex; gap: 0.5rem; overflow-x: auto; }
-    .tab { padding: 0.6rem 1.2rem; border-radius: 999px; background: #2a2e3a; color: #8a91a5; cursor: pointer; }
-    .tab.on { background: var(--accent-primary); color: white; }
-    .panel { padding: 1rem; display: none; }
-    .panel.on { display: block; }
-    .live-btn { width: 100%; padding: 1.5rem; background: var(--accent-primary); color: black; font-weight: bold; border: none; border-radius: 999px; cursor: pointer; }
-    .live-btn.live { background: var(--accent-live); color: white; }
-    .mic-btn, .cam-btn { width: 100%; padding: 1.5rem; background: #2a2e3a; color: white; border: none; border-radius: 999px; cursor: pointer; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      line-height: 1.5;
+      overflow-x: hidden;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem;
+      background: rgba(0,0,0,0.9);
+      backdrop-filter: blur(8px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo {
+      font-weight: 700;
+      font-size: 1.2rem;
+    }
+    .logo em {
+      color: var(--accent);
+      font-style: normal;
+      font-size: 1.8rem;
+      font-weight: 800;
+    }
+    .stage {
+      background: #000;
+      height: 35vh;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .stage-idle {
+      text-align: center;
+      color: var(--text-muted);
+    }
+    .stage-vid {
+      display: none;
+      width: 100%;
+      height: 100%;
+    }
+    .stage-vid.on {
+      display: block;
+    }
+    .stage-vid video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .controls {
+      padding: 1rem;
+      background: var(--surface);
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 999px;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--surface-light);
+      color: var(--text);
+      transition: 0.2s;
+    }
+    .btn.accent {
+      background: var(--accent);
+      color: #000;
+    }
+    .btn.live {
+      background: var(--accent-live);
+      color: white;
+    }
+    .btn.small {
+      padding: 0.5rem 1rem;
+      font-size: 0.8rem;
+    }
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      padding: 1rem;
+      background: var(--surface-light);
+      overflow-x: auto;
+    }
+    .tab {
+      padding: 0.5rem 1.2rem;
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--text-muted);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .tab.on {
+      background: var(--accent);
+      color: white;
+    }
+    .panel {
+      display: none;
+      padding: 1rem;
+    }
+    .panel.on {
+      display: block;
+    }
+    #rqList {
+      background: var(--surface);
+      padding: 1rem;
+      border-radius: 12px;
+      margin-top: 1rem;
+    }
+    .mic-visualizer {
+      display: flex;
+      gap: 2px;
+      height: 30px;
+      margin: 1rem 0;
+    }
+    .mic-visualizer div {
+      flex: 1;
+      background: var(--surface-light);
+      height: 100%;
+      border-radius: 2px;
+      transition: 0.1s;
+    }
+    .overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: 0.2s;
+    }
+    .overlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .modal {
+      background: var(--surface);
+      padding: 2rem;
+      border-radius: 24px;
+      width: 90%;
+      max-width: 400px;
+    }
+    .modal input {
+      width: 100%;
+      padding: 1rem;
+      margin: 1rem 0;
+      background: var(--surface-light);
+      border: 1px solid #2f3545;
+      border-radius: 40px;
+      color: white;
+    }
+    .modal button {
+      width: 100%;
+      padding: 1rem;
+      margin-bottom: 0.5rem;
+      border: none;
+      border-radius: 40px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .hidden {
+      display: none;
+    }
   </style>
 </head>
 <body>
 
 <header>
-  <div class="logo"><em>PINS & NEEDLES</em> RADIO</div>
-  <button class="hbtn" onclick="openM('djModal')">DJ</button>
+  <div class="logo"><em>PINS & NEEDLES</em>RADIO</div>
+  <button class="btn small" onclick="openM('djModal')">DJ Login</button>
 </header>
 
+<!-- Stage Area -->
 <div class="stage">
-  <div class="stage-idle" id="stageIdle">Black screen - Tap GO LIVE to start</div>
-  <div class="stage-vid" id="stageVid"><video id="liveVid" autoplay playsinline muted></video></div>
+  <div class="stage-idle" id="stageIdle">🔴 Idle – Go Live to broadcast</div>
+  <div class="stage-vid" id="stageVid">
+    <video id="liveVid" autoplay playsinline muted></video>
+  </div>
 </div>
 
-<button class="pb" onclick="playPause()">▶</button>
+<!-- Playback Controls -->
+<div class="controls">
+  <button class="btn accent" onclick="playPause()" id="playPauseBtn">▶ Play</button>
+  <span id="nowPlaying">No track loaded</span>
+  <input type="range" min="0" max="100" value="75" oninput="setVolume(this.value/100)" style="flex:1;">
+</div>
 
-<script>
-  // Global audio unlock for Chrome/Android
-document.addEventListener('touchstart', () => {
-  if (audioCtx && audioCtx.state === 'suspended') {
-    audioCtx.resume().then(() => console.log('Audio resumed'));
-  }
-}, { once: false });
-function playPause() {
-  if (!audioEl) {
-    alert('No track loaded - add one in Booth');
-    return;
-  }
-<button class="pb" onclick="playPause()">▶</button>
-
-<script>
-function playPause() {
-  if (!audioEl) {
-    alert('No track loaded - add one in Booth');
-    return;
-  }
-
-  if (audioEl.paused) {
-    audioEl.play().catch(e => {
-      alert('Playback blocked: ' + e.message + '\nTap anywhere on screen first');
-    });
-  } else {
-    audioEl.pause();
-  }
-}
-</script>
-}
-</script>
-
+<!-- Tabs -->
 <div class="tabs">
-  <div class="tab on" onclick="goTab('listen')">Listen</div>
-  <div class="tab" onclick="goTab('booth')">Booth</div>
+  <div class="tab on" onclick="goTab('listen')">📻 Listen</div>
+  <div class="tab" onclick="goTab('booth')">🎛 Booth</div>
 </div>
 
+<!-- Listen Panel -->
 <div id="listen" class="panel on">
-  <div id="rqList">No DJs yet — be the first to join!</div>
+  <div id="rqList">No DJs yet – be the first to join!</div>
 </div>
 
+<!-- Booth Panel -->
 <div id="booth" class="panel">
-  <button onclick="document.getElementById('fileInput').click()" class="add-btn">+ Add Music</button>
+  <button class="btn" onclick="document.getElementById('fileInput').click()" style="width:100%; margin-bottom:1rem;">+ Add Music</button>
   <input type="file" id="fileInput" accept="audio/*" multiple hidden onchange="addFiles(this.files)">
-  <button class="mic-btn" onclick="togMic()">Enable Mic</button>
-  <button class="cam-btn" onclick="togCam()">Enable Camera</button>
-  <button id="liveBtn" class="live-btn" onclick="togLive()">GO LIVE</button>
+
+  <button class="btn" onclick="togMic()" id="micBtn" style="width:100%; margin-bottom:0.5rem;">🎙 Enable Mic</button>
+  <div class="mic-visualizer" id="micVisualizer"></div>
+
+  <button class="btn" onclick="togCam()" id="camBtn" style="width:100%; margin-bottom:1rem;">📷 Enable Camera</button>
+
+  <button id="liveBtn" class="btn accent" onclick="togLive()" style="width:100%; padding:1.5rem; font-size:1.2rem;">🔴 GO LIVE</button>
 </div>
 
+<!-- DJ Login Modal -->
 <div class="overlay" id="djModal">
   <div class="modal">
     <h2>DJ Login</h2>
-    <input id="djCodeIn" placeholder="PNR-XXXX" type="text">
-    <button onclick="doLogin()">Enter</button>
+    <p>Enter your code (e.g., PNR-ABCD)</p>
+    <input type="text" id="djCodeIn" placeholder="PNR-XXXX">
+    <button onclick="doLogin()">Enter Booth</button>
     <button onclick="closeM('djModal')">Cancel</button>
   </div>
 </div>
 
 <script>
+  // ==================== CONFIGURATION ====================
   const WS_URL = 'wss://pindigtal-w87ngpeu.livekit.cloud';
-  const API_KEY = 'APIwZMah6JcmKro'
-  const API_SECRET = '7CSnGzXUGa4eYJUhNFr4J8w5HjvtVOjIhnyxnBbFKDd'
+  const API_KEY = 'APIwZMah6JcmKro';
+  const API_SECRET = '7CSnGzXUGa4eYJUhNFr4J8w5HjvtVOjIhnyxnBbFKDd';
 
-  let room = null;
-  let isLive = false;
-  let logName = null;
-  let audioEl = null;
-  let micStream = null;
-  let camStream = null;
+  // ==================== GLOBAL STATE ====================
+  let room = null;               // LiveKit room
+  let isLive = false;            // Are we broadcasting?
+  let logName = null;            // DJ name (from login)
+  let audioEl = null;            // Local audio element for file playback
+  let micStream = null;          // MediaStream from microphone
+  let camStream = null;          // MediaStream from camera
+  let audioCtx = null;           // Web Audio context for mic visualizer
+  let micAnalyser = null;        // Analyser node for mic levels
+  let micVisualizerInterval = null;
 
-  // Client-side token generator
+  // ==================== TOKEN GENERATOR (CLIENT-SIDE, FOR TESTING) ====================
   async function getToken(identity) {
-    const at = new LiveKit.AccessToken(API_KEY, API_SECRET, { identity });
-    at.addGrant({
-      roomJoin: true,
-      room: 'pinsradio',
-      canPublish: true,
-      canSubscribe: true
-    });
-    return await at.toJwt();
+    const at = new LiveKit.AccessToken(API_KEY, API_SECRET, { identity, ttl: '1h' });
+    at.addGrant({ roomJoin: true, room: 'pinsradio', canPublish: true, canSubscribe: true });
+    return at.toJwt();
   }
 
- async function togDJPlay() {
-  if (audioCtx && audioCtx.state === 'suspended') {
-    await audioCtx.resume();
-  }
-
-  if (!audioEl) {
-    alert('No track loaded');
-    return;
-  }
-
-  if (audioEl.paused) {
-    audioEl.play().catch(e => {
-      alert('Play failed: ' + e.message + '\nTap screen first');
-    });
-  } else {
-    audioEl.pause();
-  }
-}
+  // ==================== MOBILE AUDIO UNLOCK ====================
+  document.addEventListener('touchstart', async () => {
+    if (audioCtx && audioCtx.state === 'suspended') {
+      await audioCtx.resume();
     }
-const token = await getToken(identity);
+  }, { once: false });
+
+  // ==================== PLAY/PAUSE LOCAL AUDIO ====================
+  function playPause() {
+    if (!audioEl) {
+      alert('No track loaded – add one in Booth');
+      return;
+    }
+    if (audioEl.paused) {
+      audioEl.play().catch(e => {
+        alert('Playback blocked: tap screen first');
+      });
+      document.getElementById('playPauseBtn').textContent = '⏸ Pause';
+    } else {
+      audioEl.pause();
+      document.getElementById('playPauseBtn').textContent = '▶ Play';
+    }
+  }
+
+  function setVolume(val) {
+    if (audioEl) audioEl.volume = val;
+  }
+
+  // ==================== FILE HANDLING ====================
+  function addFiles(files) {
+    if (files.length === 0) return;
+    const file = files[0];
+    if (!file.type.startsWith('audio/')) {
+      alert('Please select an audio file');
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    if (audioEl) {
+      audioEl.pause();
+      URL.revokeObjectURL(audioEl.src);
+    }
+    audioEl = new Audio(url);
+    audioEl.volume = 0.75;
+    audioEl.onended = () => {
+      document.getElementById('playPauseBtn').textContent = '▶ Play';
+    };
+    document.getElementById('nowPlaying').textContent = `🎵 ${file.name}`;
+    document.getElementById('playPauseBtn').textContent = '▶ Play';
+    alert('Music loaded. Enable mic and GO LIVE to broadcast.');
+  }
+
+  // ==================== MICROPHONE ====================
+  async function togMic() {
+    if (micStream) {
+      // Stop mic
+      micStream.getTracks().forEach(t => t.stop());
+      micStream = null;
+      document.getElementById('micBtn').textContent = '🎙 Enable Mic';
+      if (micVisualizerInterval) {
+        clearInterval(micVisualizerInterval);
+        micVisualizerInterval = null;
+      }
+      return;
+    }
+
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      document.getElementById('micBtn').textContent = '🎙 Mic ON (click to disable)';
+
+      // Set up visualizer
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+      const source = audioCtx.createMediaStreamSource(micStream);
+      micAnalyser = audioCtx.createAnalyser();
+      micAnalyser.fftSize = 256;
+      source.connect(micAnalyser);
+
+      const bufferLength = micAnalyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+      const visualizer = document.getElementById('micVisualizer');
+      visualizer.innerHTML = ''; // clear
+      for (let i = 0; i < 20; i++) {
+        visualizer.appendChild(document.createElement('div'));
+      }
+      const bars = visualizer.children;
+
+      micVisualizerInterval = setInterval(() => {
+        if (!micAnalyser) return;
+        micAnalyser.getByteFrequencyData(dataArray);
+        for (let i = 0; i < bars.length; i++) {
+          const value = dataArray[i * 2] || 0;
+          const height = (value / 255) * 100;
+          bars[i].style.height = height + '%';
+          bars[i].style.background = value > 150 ? 'var(--accent-live)' : 'var(--accent)';
+        }
+      }, 50);
+
+    } catch (e) {
+      alert('Mic access denied or not available');
+      console.error(e);
+    }
+  }
+
+  // ==================== CAMERA ====================
+  async function togCam() {
+    if (camStream) {
+      camStream.getTracks().forEach(t => t.stop());
+      camStream = null;
+      document.getElementById('camBtn').textContent = '📷 Enable Camera';
+      document.getElementById('liveVid').srcObject = null;
+      document.getElementById('stageVid').classList.remove('on');
+      document.getElementById('stageIdle').style.display = 'flex';
+      return;
+    }
+
+    try {
+      camStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      document.getElementById('camBtn').textContent = '📷 Camera ON (click to disable)';
+      if (isLive) {
+        // If already live, show video immediately
+        document.getElementById('liveVid').srcObject = camStream;
+        document.getElementById('stageVid').classList.add('on');
+        document.getElementById('stageIdle').style.display = 'none';
+      }
+    } catch (e) {
+      alert('Camera access denied');
+      console.error(e);
+    }
+  }
+
+  // ==================== LIVE BROADCAST ====================
+  async function togLive() {
+    if (!logName) {
+      alert('Please log in as DJ first');
+      return;
+    }
+
+    if (!isLive) {
+      // GOING LIVE
+      try {
+        // Resume audio context (mobile)
+        if (audioCtx && audioCtx.state === 'suspended') await audioCtx.resume();
+
+        // Ensure we have mic (or prompt)
+        if (!micStream) {
+          await togMic(); // this will ask for permission
+          if (!micStream) throw new Error('Microphone is required to broadcast');
         }
 
-        // Get mic
-        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-        // Optional cam
-        try {
-          camStream = await navigator.mediaDevices.getUserMedia({ video: true });
-          document.getElementById('liveVid').srcObject = camStream;
-          document.getElementById('liveVid').classList.remove('hidden');
-          document.getElementById('stageIdle').classList.add('hidden');
-        } catch {}
-
-        // Token
+        // Get token (client-side)
         const token = await getToken(logName);
 
-        // Connect
+        // Connect to LiveKit
         room = new LiveKit.Room();
+        room.on('connected', () => console.log('LiveKit connected'));
+        room.on('disconnected', () => console.log('LiveKit disconnected'));
         await room.connect(WS_URL, token);
 
-        // Publish mic
-        const audioTrack = micStream.getAudioTracks()[0];
-        await room.localParticipant.publishTrack(audioTrack);
+        // Publish microphone track
+        const micTrack = micStream.getAudioTracks()[0];
+        await room.localParticipant.publishTrack(micTrack);
+        console.log('Mic track published');
 
-        btn.textContent = '■ END LIVE';
-        btn.style.background = 'var(--accent-live)';
-        alert('LIVE! Broadcasting mic (and camera if enabled).');
+        // If camera is enabled, publish it too
+        if (camStream) {
+          const camTrack = camStream.getVideoTracks()[0];
+          await room.localParticipant.publishTrack(camTrack);
+          // Show camera in stage
+          document.getElementById('liveVid').srcObject = camStream;
+          document.getElementById('stageVid').classList.add('on');
+          document.getElementById('stageIdle').style.display = 'none';
+        } else {
+          // If no camera, show idle but with live status
+          document.getElementById('stageIdle').innerHTML = '🔴 LIVE (audio only)';
+        }
+
+        // Update UI
+        isLive = true;
+        document.getElementById('liveBtn').textContent = '■ END LIVE';
+        document.getElementById('liveBtn').classList.add('live');
+        alert('You are now LIVE on Pins & Needles Radio!');
+
       } catch (e) {
-        alert('Cannot connect: ' + e.message);
+        alert('Failed to go live: ' + e.message);
         console.error(e);
-        isLive = false;
       }
     } else {
-      room?.disconnect();
-      room = null;
-      btn.textContent = 'GO LIVE';
-      btn.style.background = '';
+      // ENDING LIVE
+      if (room) {
+        room.disconnect();
+        room = null;
+      }
+      isLive = false;
+      document.getElementById('liveBtn').textContent = '🔴 GO LIVE';
+      document.getElementById('liveBtn').classList.remove('live');
+      document.getElementById('stageVid').classList.remove('on');
+      document.getElementById('stageIdle').style.display = 'flex';
+      document.getElementById('stageIdle').innerHTML = '🔴 Idle – Go Live to broadcast';
+      // Keep camera stream active if enabled (so user can toggle again)
+      if (camStream) {
+        // Just hide video, but keep camStream for later
+      }
     }
   }
 
+  // ==================== DJ LOGIN ====================
   function doLogin() {
     const code = document.getElementById('djCodeIn').value.trim();
-    if (code) {
-      logName = 'DJ_' + code.slice(-4);
-      closeM('djModal');
-      document.getElementById('rqList').innerHTML = 'DJ ' + logName + ' in queue. Go to Booth!';
-    } else {
-      alert('Enter code');
+    if (!code) {
+      alert('Enter a code');
+      return;
     }
+    // Simple mock: use last 4 chars as name
+    logName = 'DJ_' + code.slice(-4);
+    closeM('djModal');
+    document.getElementById('rqList').innerHTML = `✅ ${logName} is in the queue. Go to Booth and GO LIVE when ready.`;
   }
 
-  function openM(id) { document.getElementById(id).classList.remove('hidden'); }
-  function closeM(id) { document.getElementById(id).classList.add('hidden'); }
+  function openM(id) {
+    document.getElementById(id).classList.add('open');
+  }
+  function closeM(id) {
+    document.getElementById(id).classList.remove('open');
+  }
 
-  function goTab(tab) {
+  // ==================== TABS ====================
+  function goTab(tabName) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('on'));
-    document.getElementById(tab).classList.add('on');
+    document.getElementById(tabName).classList.add('on');
+    // Find the clicked tab and mark it on
+    document.querySelectorAll('.tab').forEach(t => {
+      if (t.textContent.includes(tabName === 'listen' ? 'Listen' : 'Booth')) {
+        t.classList.add('on');
+      }
+    });
   }
-
-  function addFiles(files) {
-    const file = files[0];
-    if (file && file.type.startsWith('audio/')) {
-      const url = URL.createObjectURL(file);
-      audioEl = new Audio(url);
-      alert('Music loaded - enable mic and GO LIVE');
-    }
-  }
-
-  function togMic() { alert('Mic toggle - implemented in togLive'); } // placeholder
-  function togCam() { alert('Camera toggle - implemented in togLive'); }
-
-  // Init
-  document.addEventListener('touchstart', () => {
-    if (window.audioCtx?.state === 'suspended') window.audioCtx.resume();
-  }, { once: true });
 </script>
 </body>
 </html>
