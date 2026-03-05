@@ -145,9 +145,7 @@ function playPause() {
   }
 }
     }
-const tokenRes = await fetch(`http://159.223.192.8:3001/token?room=${roomName}&identity=${encodeURIComponent(identity)}`);
-if (!tokenRes.ok) throw new Error('Token server error');
-const { token } = await tokenRes.json();
+const token = await getToken(identity);
         }
 
         // Get mic
