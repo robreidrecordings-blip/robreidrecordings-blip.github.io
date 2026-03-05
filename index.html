@@ -116,10 +116,24 @@ function playPause() {
     return await at.toJwt();
   }
 
-  async function togLive() {
-    if (!logName) {
-      alert('Login as DJ first');
-      return;
+ async function togDJPlay() {
+  if (audioCtx && audioCtx.state === 'suspended') {
+    await audioCtx.resume();
+  }
+
+  if (!audioEl) {
+    alert('No track loaded');
+    return;
+  }
+
+  if (audioEl.paused) {
+    audioEl.play().catch(e => {
+      alert('Play failed: ' + e.message + '\nTap screen first');
+    });
+  } else {
+    audioEl.pause();
+  }
+}
     }
 
     isLive = !isLive;
