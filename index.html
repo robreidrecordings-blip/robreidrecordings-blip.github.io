@@ -44,14 +44,84 @@
 <script>
 // ===================== FIXED LIVEKIT CLIENT-SIDE TOKEN + BROADCAST =====================
 
+// LiveKit Client-Side Token & Connect (no server needed)
 const LIVEKIT_WS = 'wss://pindigtal-w87ngpeu.livekit.cloud';
 const LIVEKIT_API_KEY = 'APIwZMah6JcmKro';
 const LIVEKIT_API_SECRET = '7CSnGzXUGa4eYJUhNFr4J8w5HjvtVOjIhnyxnBbFKDd';
 
-let room = null;
-let localAudioTrack = null;
-let localVideoTrack = null;
+let liveKitRoom = null;
 let isLive = false;
+
+async function getToken(identity) {
+  const at = new LiveKit.AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, { identity });
+  at.addGrant({
+    roomJoin: true,
+    room: 'pinsradio',
+    canPublish: true,
+    canSubscribe: true
+  });
+  return await at.toJwt();
+}
+
+async function togLive() {
+  if (!logCode) {
+    alert('Login as DJ first');
+    return;
+  }
+
+  isLive = !isLive;
+  const btn = document.getElementById('liveBtn');
+
+  if (isLive) {
+    try {
+      // Resume audio context (mobile fix)
+      if (audioCtx && audioCtx.state === 'suspended') await audioCtx.resume();
+
+      // Mix audio
+      const dest = audioCtx.createMediaStreamDestination();
+      if (audioEl) {
+        const src = audioCtx.createMediaElementSource(audioEl);
+        src.connect(dest);
+      }
+      if (micStream) {
+        const src = audioCtx.createMediaStreamSource(micStream);
+        src.connect(dest);
+      }
+
+      const mixedTrack = dest.stream.getAudioTracks()[0];
+
+      // Token
+      const identity = logName || 'DJ_Guest';
+      const token = await getToken(identity);
+
+      // Connect & publish
+      liveKitRoom = new LiveKit.Room();
+      await liveKitRoom.connect(LIVEKIT_WS, token);
+      await liveKitRoom.localParticipant.publishTrack(mixedTrack);
+
+      // Camera
+      if (camStream) {
+        await liveKitRoom.localParticipant.publishTrack(camStream.getVideoTracks()[0]);
+        document.getElementById('liveVid').srcObject = camStream;
+        document.getElementById('liveVid').classList.remove('hidden');
+        document.getElementById('stageIdle').classList.add('hidden');
+      }
+
+      btn.className = 'live-btn live';
+      document.getElementById('liveLbl').textContent = '■ End Broadcast';
+      alert('LIVE! Broadcasting now.');
+    } catch (e) {
+      alert('Connect failed: ' + e.message);
+      console.error(e);
+      isLive = false;
+    }
+  } else {
+    if (liveKitRoom) liveKitRoom.disconnect();
+    liveKitRoom = null;
+    btn.className = 'live-btn off';
+    document.getElementById('liveLbl').textContent = 'Go Live';
+  }
+}
 
 // Simple token generator (client-side for testing – in production move to server)
 async function getToken(identity) {
