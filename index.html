@@ -44,6 +44,12 @@
 <button class="pb" onclick="playPause()">▶</button>
 
 <script>
+  // Global audio unlock for Chrome/Android
+document.addEventListener('touchstart', () => {
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume().then(() => console.log('Audio resumed'));
+  }
+}, { once: false });
 function playPause() {
   if (!audioEl) {
     alert('No track loaded - add one in Booth');
