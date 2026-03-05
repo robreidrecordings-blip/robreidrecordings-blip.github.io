@@ -2,39 +2,61 @@
 <html>
 <head>
   <title>LiveKit Test</title>
-  <script src="https://unpkg.com/livekit-client@2/dist/livekit-client.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js"></script>
 </head>
 <body>
   <h1>LiveKit Broadcast Test</h1>
   <button id="startBtn">Start Broadcast</button>
   <div id="status"></div>
+  <div id="error" style="color:red"></div>
 
   <script>
-    const WS_URL = 'wss://pindigtal-w87ngpeu.livekit.cloud';
-    // Paste your hardcoded token here
-    const TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzI3Mjk4MTEsImlkZW50aXR5IjoicGluc3JhZGlvIiwiaXNzIjoiQVBJd1pNYWg2SmNtS3JvIiwibmJmIjoxNzcyNzI4OTExLCJzdWIiOiJwaW5zcmFkaW8iLCJ2aWRlbyI6eyJjYW5QdWJsaXNoIjp0cnVlLCJjYW5QdWJsaXNoRGF0YSI6dHJ1ZSwiY2FuU3Vic2NyaWJlIjp0cnVlLCJyb29tIjoidGVzdGRqIiwicm9vbUpvaW4iOnRydWV9fQ.FEK4bs128cDvbK-Kyd97UWZe6cDvtCyG6QMKbNjGs2Q';
+    // Wait for library to load
+    function waitForLib() {
+      return new Promise((resolve) => {
+        if (typeof Livekit !== 'undefined') return resolve();
+        const check = setInterval(() => {
+          if (typeof Livekit !== 'undefined') {
+            clearInterval(check);
+            resolve();
+          }
+        }, 100);
+      });
+    }
 
     document.getElementById('startBtn').onclick = async () => {
       const status = document.getElementById('status');
-      status.textContent = 'Requesting mic...';
+      const errorDiv = document.getElementById('error');
+      errorDiv.textContent = '';
 
+      // Check library
+      await waitForLib();
+      if (typeof Livekit === 'undefined') {
+        errorDiv.textContent = 'LiveKit library not loaded. Check network.';
+        return;
+      }
+
+      const WS_URL = 'wss://pindigtal-w87ngpeu.livekit.cloud';
+      // PASTE YOUR TOKEN HERE (from LiveKit dashboard)
+      const TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzI3Mjk4MTEsImlkZW50aXR5IjoicGluc3JhZGlvIiwiaXNzIjoiQVBJd1pNYWg2SmNtS3JvIiwibmJmIjoxNzcyNzI4OTExLCJzdWIiOiJwaW5zcmFkaW8iLCJ2aWRlbyI6eyJjYW5QdWJsaXNoIjp0cnVlLCJjYW5QdWJsaXNoRGF0YSI6dHJ1ZSwiY2FuU3Vic2NyaWJlIjp0cnVlLCJyb29tIjoidGVzdGRqIiwicm9vbUpvaW4iOnRydWV9fQ.FEK4bs128cDvbK-Kyd97UWZe6cDvtCyG6QMKbNjGs2Q'; // replace with your actual token
+
+      status.textContent = 'Requesting mic...';
       try {
-        // 1. Get mic
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         status.textContent = 'Mic obtained. Connecting...';
 
-        // 2. Connect to LiveKit
-        const room = new LiveKit.Room();
+        const room = new Livekit.Room();
         room.on('connected', () => status.textContent = 'Connected! Publishing...');
         room.on('disconnected', () => status.textContent = 'Disconnected');
-        await room.connect(WS_URL, TOKEN);
+        room.on('connectionStateChanged', (state) => console.log('State:', state));
 
-        // 3. Publish mic track
+        await room.connect(WS_URL, TOKEN);
         const track = stream.getAudioTracks()[0];
         await room.localParticipant.publishTrack(track);
         status.textContent = 'LIVE! Mic is broadcasting.';
       } catch (e) {
         status.textContent = 'Error: ' + e.message;
+        errorDiv.textContent = e.message;
         console.error(e);
       }
     };
